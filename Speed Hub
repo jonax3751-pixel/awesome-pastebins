@@ -1,0 +1,482 @@
+-- SPEED - HUB ⚡ (Minimal / Futuristic)
+-- Cole em LocalScript (StarterPlayerScripts) ou rode pelo executor
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+local guiParent = player:WaitForChild("PlayerGui")
+
+-- Helper: create instances
+local function new(inst, props)
+    local o = Instance.new(inst)
+    if props then
+        for k,v in pairs(props) do o[k] = v end
+    end
+    return o
+end
+
+-- Root ScreenGui
+local SCREEN = new("ScreenGui", {Name = "SPEED_HUB_GUI", ResetOnSpawn = false, Parent = guiParent})
+
+-- Optional blur effect (client-side) for confirmation popup
+local blur = Lighting:FindFirstChild("SPEED_HUB_BLUR")
+if not blur then
+    blur = Instance.new("BlurEffect")
+    blur.Name = "SPEED_HUB_BLUR"
+    blur.Size = 0
+    blur.Parent = Lighting
+end
+blur.Enabled = false
+
+-- -------------------------
+-- Bubble (circular button) - estilo cockatub
+-- -------------------------
+local bubble = new("TextButton", {
+    Name = "BubbleOpen",
+    Parent = SCREEN,
+    Size = UDim2.new(0,60,0,60),
+    Position = UDim2.new(0,20,1,-100),
+    BackgroundColor3 = Color3.fromRGB(10,140,255),
+    Text = "⚡",
+    TextScaled = true,
+    TextColor3 = Color3.fromRGB(255,255,255),
+    AutoButtonColor = false,
+})
+local bubbleCorner = new("UICorner", {Parent = bubble, CornerRadius = UDim.new(1,0)})
+local bubbleStroke = new("UIStroke", {Parent = bubble, Thickness = 2, Color = Color3.fromRGB(255,255,255), Transparency = 0.15})
+
+-- Make bubble draggable
+do
+    local dragging, dragInput, dragStart, startPos
+    bubble.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = bubble.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    bubble.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            bubble.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- -------------------------
+-- Main Frame (hidden initially)
+-- -------------------------
+local main = new("Frame", {
+    Name = "Main",
+    Parent = SCREEN,
+    Size = UDim2.new(0,640,0,380),
+    Position = UDim2.new(0.5,-320,0.5,-190),
+    BackgroundTransparency = 0,
+    BorderSizePixel = 0,
+})
+local mainCorner = new("UICorner", {Parent = main, CornerRadius = UDim.new(0,16)})
+local mainStroke = new("UIStroke", {Parent = main, Thickness = 1, Color = Color3.fromRGB(255,255,255), Transparency = 0.85})
+
+-- Gradient (blue -> yellow)
+local grad = new("UIGradient", {Parent = main, Rotation = 0})
+grad.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(3, 86, 255)),   -- deep blue
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 214, 0))   -- yellow
+}
+grad.Transparency = NumberSequence.new(0.15) -- subtle
+
+-- Inner panels
+local titleBar = new("Frame", {Parent = main, Size = UDim2.new(1,0,0,44), BackgroundTransparency = 0.15})
+local titleLabel = new("TextLabel", {
+    Parent = titleBar,
+    BackgroundTransparency = 1,
+    Text = "⚡ SPEED - HUB ⚡",
+    Font = Enum.Font.GothamBold,
+    TextSize = 20,
+    TextColor3 = Color3.fromRGB(255,255,255),
+    Size = UDim2.new(0.7,0,1,0),
+    Position = UDim2.new(0,12,0,0),
+    TextXAlignment = Enum.TextXAlignment.Left
+})
+local xButton = new("TextButton", {
+    Parent = titleBar,
+    Text = "✕",
+    Size = UDim2.new(0,36,0,36),
+    Position = UDim2.new(1,-44,0,4),
+    BackgroundTransparency = 0.25,
+    AutoButtonColor = false
+})
+new("UICorner",{Parent = xButton, CornerRadius = UDim.new(0,10)})
+
+-- Make main draggable on titleBar
+do
+    local dragging, dragStart, startPos
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = main.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    titleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+            local delta = input.Position - dragStart
+            main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- Layout: sidebar + content
+local sidebar = new("Frame", {Parent = main, Size = UDim2.new(0,150,1,-44), Position = UDim2.new(0,0,0,44), BackgroundTransparency = 0.3})
+new("UICorner",{Parent = sidebar, CornerRadius = UDim.new(0,12)})
+local content = new("Frame", {Parent = main, Size = UDim2.new(1,-170,1,-64), Position = UDim2.new(0,160,0,54), BackgroundTransparency = 1})
+local contentLabel = new("TextLabel", {Parent = content, BackgroundTransparency = 1, Text = "Escolha uma aba", Font = Enum.Font.Gotham, TextSize = 18, TextColor3 = Color3.fromRGB(255,255,255)})
+contentLabel.Size = UDim2.new(1,0,0,30)
+
+-- Scroll for content options
+local contentScroll = new("ScrollingFrame", {Parent = content, Size = UDim2.new(1,0,1,-40), Position = UDim2.new(0,0,0,40), BackgroundTransparency = 1, CanvasSize = UDim2.new(0,0,0,0)})
+contentScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+contentScroll.ScrollBarThickness = 6
+
+-- Sidebar buttons
+local tabs = {"Fun","Avatar","House","Car","RGB","Music","Troll","Spam","Scripts","Teleports"}
+local tabButtons = {}
+for i, name in ipairs(tabs) do
+    local b = new("TextButton", {Parent = sidebar, Text = name, Size = UDim2.new(1,-20,0,36), Position = UDim2.new(0,10,0,(i-1)*42 + 10), BackgroundTransparency = 0.2, Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = Color3.fromRGB(255,255,255)})
+    new("UICorner",{Parent = b, CornerRadius = UDim.new(0,10)})
+    tabButtons[name] = b
+end
+
+-- Hide main initially
+main.Visible = false
+
+-- Utility: clear children of contentScroll
+local function clearContent()
+    for _,c in pairs(contentScroll:GetChildren()) do
+        if not (c:IsA("UIListLayout") or c:IsA("UIPadding")) then c:Destroy() end
+    end
+end
+
+-- Layout for content scroll
+local uiList = new("UIListLayout", {Parent = contentScroll, Padding = UDim.new(0,10), SortOrder = Enum.SortOrder.LayoutOrder})
+local uiPad = new("UIPadding", {Parent = contentScroll, PaddingTop = UDim.new(0,6), PaddingLeft = UDim.new(0,6), PaddingRight = UDim.new(0,6)})
+
+-- Small helper to create option buttons
+local function createOption(title, callback)
+    local btn = new("TextButton", {Parent = contentScroll, Size = UDim2.new(1,-10,0,44), BackgroundTransparency = 0.15, Text = title, Font = Enum.Font.Gotham, TextSize = 16, TextColor3 = Color3.fromRGB(255,255,255)})
+    new("UICorner",{Parent = btn, CornerRadius = UDim.new(0,10)})
+    btn.MouseButton1Click:Connect(function()
+        pcall(callback)
+    end)
+    return btn
+end
+
+-- -------------------------
+-- Implementações das abas
+-- -------------------------
+
+-- 1) Fun
+tabButtons["Fun"].MouseButton1Click:Connect(function()
+    clearContent()
+    contentLabel.Text = "Fun"
+    createOption("Aumentar Jump (local)", function()
+        local char = player.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.JumpPower = 100
+            char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end)
+    createOption("Reset Jump (local)", function()
+        local char = player.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.JumpPower = 50
+        end
+    end)
+    createOption("Dance (emote local)", function()
+        -- tenta tocar um animation local (substitua AnimationId se quiser)
+        local char = player.Character
+        if char and char:FindFirstChild("Humanoid") then
+            local anim = Instance.new("Animation")
+            anim.AnimationId = "rbxassetid://507770239" -- exemplo genérico
+            local track = char.Humanoid:LoadAnimation(anim)
+            track:Play()
+            delay(6, function() track:Stop(); anim:Destroy() end)
+        end
+    end)
+end)
+
+-- 2) Avatar
+tabButtons["Avatar"].MouseButton1Click:Connect(function()
+    clearContent()
+    contentLabel.Text = "Avatar"
+    createOption("Aumentar WalkSpeed (local)", function()
+        local char = player.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.WalkSpeed = 40
+        end
+    end)
+    createOption("Reset WalkSpeed (local)", function()
+        local char = player.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.WalkSpeed = 16
+        end
+    end)
+end)
+
+-- 3) House (placeholder actions)
+tabButtons["House"].MouseButton1Click:Connect(function()
+    clearContent()
+    contentLabel.Text = "House"
+    createOption("Spawn Marker (local)", function()
+        local part = Instance.new("Part")
+        part.Size = Vector3.new(2,1,2)
+        part.Anchored = true
+        part.CanCollide = false
+        part.Position = (player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart.Position + Vector3.new(0,3,0)) or Vector3.new(0,5,0)
+        part.Parent = workspace
+        game:GetService("Debris"):AddItem(part, 5)
+    end)
+end)
+
+-- 4) Car (placeholder)
+tabButtons["Car"].MouseButton1Click:Connect(function()
+    clearContent()
+    contentLabel.Text = "Car"
+    createOption("Criar carro simples (local)", function()
+        local car = Instance.new("Part")
+        car.Size = Vector3.new(4,1,6)
+        car.Position = player.Character and player.Character.HumanoidRootPart.Position + Vector3.new(0,5,0) or Vector3.new(0,5,0)
+        car.Anchored = false
+        car.Parent = workspace
+        game:GetService("Debris"):AddItem(car, 10)
+    end)
+end)
+
+-- 5) RGB (Highlight color cycle local)
+local rgbLoop = false
+local rgbHighlight = nil
+local rgbConn = nil
+tabButtons["RGB"].MouseButton1Click:Connect(function()
+    clearContent()
+    contentLabel.Text = "RGB"
+    createOption("Ativar RGB (local)", function()
+        if rgbLoop then return end
+        rgbLoop = true
+        local char = player.Character
+        if not char then rgbLoop = false; return end
+        rgbHighlight = Instance.new("Highlight")
+        rgbHighlight.Parent = char
+        rgbHighlight.Adornee = char
+        rgbHighlight.OutlineTransparency = 1
+        local t = 0
+        rgbConn = RunService.RenderStepped:Connect(function(dt)
+            if not rgbLoop then return end
+            t = t + dt * 1.5
+            local color = Color3.fromHSV((t) % 1, 1, 1)
+            rgbHighlight.FillColor = color
+        end)
+    end)
+    createOption("Desativar RGB", function()
+        rgbLoop = false
+        if rgbConn then rgbConn:Disconnect(); rgbConn = nil end
+        if rgbHighlight then rgbHighlight:Destroy(); rgbHighlight = nil end
+    end)
+end)
+
+-- 6) Music (play local sound by asset id)
+local currentSound = nil
+tabButtons["Music"].MouseButton1Click:Connect(function()
+    clearContent()
+    contentLabel.Text = "Music"
+    local instr = Instance.new("TextBox", contentScroll)
+    instr.Size = UDim2.new(1,-10,0,40)
+    instr.PlaceholderText = "Cole aqui o SoundId (ex: 184352...) sem 'rbxassetid://'"
+    instr.Font = Enum.Font.Gotham
+    instr.TextSize = 14
+    instr.Text = ""
+    local playBtn = createOption("Tocar (local)", function()
+        local id = instr.Text:match("%d+")
+        if not id then return end
+        if currentSound then currentSound:Stop(); currentSound:Destroy(); currentSound = nil end
+        local ss = game:GetService("SoundService")
+        currentSound = Instance.new("Sound", ss)
+        currentSound.SoundId = "rbxassetid://"..id
+        currentSound.Looped = true
+        currentSound.Volume = 0.8
+        currentSound:Play()
+    end)
+    createOption("Parar música", function()
+        if currentSound then currentSound:Stop(); currentSound:Destroy(); currentSound = nil end
+    end)
+end)
+
+-- 7) Troll (local toggles)
+tabButtons["Troll"].MouseButton1Click:Connect(function()
+    clearContent()
+    contentLabel.Text = "Troll"
+    createOption("Flutuar (anclar personagem)", function()
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+            hrp.Anchored = true
+            delay(3, function() if hrp then hrp.Anchored = false end end)
+        end
+    end)
+    createOption("Congelar (desativar movimento local)", function()
+        local char = player.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.WalkSpeed = 0
+            char.Humanoid.JumpPower = 0
+            delay(5, function()
+                if char and char:FindFirstChild("Humanoid") then
+                    char.Humanoid.WalkSpeed = 16
+                    char.Humanoid.JumpPower = 50
+                end
+            end)
+        end
+    end)
+end)
+
+-- 8) Spam (local safe action)
+tabButtons["Spam"].MouseButton1Click:Connect(function()
+    clearContent()
+    contentLabel.Text = "Spam"
+    createOption("Criar 10 efeitos visuais locais", function()
+        for i=1,10 do
+            local p = Instance.new("Part")
+            p.Size = Vector3.new(1,1,1)
+            p.Anchored = true
+            p.CanCollide = false
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            p.Position = (hrp and hrp.Position or Vector3.new(0,5,0)) + Vector3.new(math.random(-6,6), math.random(1,6), math.random(-6,6))
+            p.Parent = workspace
+            game:GetService("Debris"):AddItem(p, 4)
+        end
+    end)
+end)
+
+-- 9) Scripts (placeholder to run simple local code)
+tabButtons["Scripts"].MouseButton1Click:Connect(function()
+    clearContent()
+    contentLabel.Text = "Scripts"
+    local tb = Instance.new("TextBox", contentScroll)
+    tb.Size = UDim2.new(1,-10,0,100)
+    tb.PlaceholderText = "-- Cole um pequeno trecho de código Lua (apenas local) --"
+    tb.Font = Enum.Font.Gotham
+    tb.TextWrapped = true
+    tb.ClearTextOnFocus = false
+    local runBtn = createOption("Executar (local, com cuidado)", function()
+        local code = tb.Text
+        if type(code) == "string" and #code > 5 then
+            local func, err = loadstring(code)
+            if func then
+                pcall(func)
+            else
+                warn("Erro loadstring:", err)
+            end
+        end
+    end)
+end)
+
+-- 10) Teleports (funcional)
+tabButtons["Teleports"].MouseButton1Click:Connect(function()
+    clearContent()
+    contentLabel.Text = "Teleports"
+
+    -- Teleports workspace folder (crie partes com nomes em workspace.SPEED_HUB_Teleports)
+    local info = new("TextLabel", {Parent = contentScroll, Text = "Teleports disponíveis (workspace.SPEED_HUB_Teleports):", Size = UDim2.new(1,-10,0,24), BackgroundTransparency = 1, Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255,255,255)})
+    new("UITextSizeConstraint",{Parent = info, MaxTextSize = 18})
+
+    local function refreshTeleports()
+        -- remove old teleport buttons in contentScroll then add
+        for _,c in pairs(contentScroll:GetChildren()) do
+            if c:IsA("TextButton") and c.Name:match("^TP_") then c:Destroy() end
+        end
+        local folder = workspace:FindFirstChild("SPEED_HUB_Teleports")
+        if folder then
+            for _,part in pairs(folder:GetChildren()) do
+                if part:IsA("BasePart") then
+                    local btn = new("TextButton", {Parent = contentScroll, Name = "TP_"..part.Name, Text = "Ir para: "..part.Name, Size = UDim2.new(1,-10,0,36), BackgroundTransparency = 0.15, Font = Enum.Font.Gotham})
+                    new("UICorner",{Parent = btn, CornerRadius = UDim.new(0,8)})
+                    btn.MouseButton1Click:Connect(function()
+                        local char = player.Character
+                        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            hrp.CFrame = part.CFrame + Vector3.new(0,3,0)
+                        end
+                    end)
+                end
+            end
+        else
+            local lbl = new("TextLabel", {Parent = contentScroll, Text = "Nenhum teleporte em workspace.SPEED_HUB_Teleports (crie uma pasta com esse nome e adicione Parts).", BackgroundTransparency = 1, Size = UDim2.new(1,-10,0,36), Font = Enum.Font.Gotham})
+            new("UITextSizeConstraint",{Parent = lbl, MaxTextSize = 14})
+        end
+    end
+
+    refreshTeleports()
+
+    createOption("Atualizar lista de teleports", function()
+        refreshTeleports()
+    end)
+
+    -- Teleport to player
+    local playersLabel = new("TextLabel", {Parent = contentScroll, Text = "Teleport para jogador:", Size = UDim2.new(1,-10,0,20), BackgroundTransparency = 1, Font = Enum.Font.GothamBold})
+    for _,plr in pairs(Players:GetPlayers()) do
+        if plr ~= player then
+            local btn = new("TextButton", {Parent = contentScroll, Text = "Ir para "..plr.Name, Size = UDim2.new(1,-10,0,36), BackgroundTransparency = 0.15, Font = Enum.Font.Gotham})
+            new("UICorner",{Parent = btn, CornerRadius = UDim.new(0,8)})
+            btn.MouseButton1Click:Connect(function()
+                local targetChar = plr.Character
+                local myChar = player.Character
+                if targetChar and targetChar:FindFirstChild("HumanoidRootPart") and myChar and myChar:FindFirstChild("HumanoidRootPart") then
+                    myChar.HumanoidRootPart.CFrame = targetChar.HumanoidRootPart.CFrame + Vector3.new(0,3,0)
+                end
+            end)
+        end
+    end
+end)
+
+-- Sidebar default select (first tab)
+tabButtons["Fun"].MouseButton1Click:Fire()
+
+-- -------------------------
+-- Close behavior with confirmation
+-- -------------------------
+-- Confirmation UI
+local confirmFrame = new("Frame", {Parent = SCREEN, Size = UDim2.new(0,360,0,160), Position = UDim2.new(0.5,-180,0.5,-80), BackgroundTransparency = 0.05, Visible = false})
+new("UICorner",{Parent = confirmFrame, CornerRadius = UDim.new(0,12)})
+local confirmText = new("TextLabel", {Parent = confirmFrame, Size = UDim2.new(1,-20,0,80), Position = UDim2.new(0,10,0,10), BackgroundTransparency = 1, Text = "Você quer mesmo fechar este Hub?", Font = Enum.Font.GothamBold, TextSize = 18, TextWrapped = true, TextColor3 = Color3.fromRGB(255,255,255)})
+local yesBtn = new("TextButton", {Parent = confirmFrame, Text = "Sim", Size = UDim2.new(0.45,0,0,40), Position = UDim2.new(0.05,0,0.65,0)})
+local noBtn = new("TextButton", {Parent = confirmFrame, Text = "Não", Size = UDim2.new(0.45,0,0,40), Position = UDim2.new(0.5,0,0.65,0)})
+for _,b in pairs({yesBtn,noBtn}) do new("UICorner",{Parent = b, CornerRadius = UDim.new(0,8)}) end
+
+-- Open/close anim helpers
+local function tweenObject(obj, props, time)
+    TweenService:Create(obj, TweenInfo.new(time or 0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+end
+
+-- Bubble opens the main with a cool scale anim
+bubble.MouseButton1Click:Connect(function()
+    if main.Visible then
+        -- if visible, minimize to bubble
+        blur.Enabled = true
+        confirmFrame.Visible = true
+        -- show small confirmat
